@@ -2,8 +2,10 @@ package router
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/nats-io/nats-server/test"
@@ -17,6 +19,14 @@ func RunServer(fn func(*nats.Conn)) {
 	fn(nc)
 	nc.Close()
 	s.Shutdown()
+}
+
+func HandlerCounterFunc(i *int32, t *testing.T, name string) HandlerFunc {
+	return func(ctx context.Context, msg *nats.Msg) {
+		t.Logf("%v handling subject %v", name, msg.Subject)
+		atomic.AddInt32(i, 1)
+		msg.Respond([]byte(""))
+	}
 }
 
 // Make sure our testing infrastructure is valid
