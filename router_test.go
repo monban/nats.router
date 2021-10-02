@@ -73,10 +73,12 @@ func TestHierarchicalRoutes(t *testing.T) {
 	var fooBarStarCounter int32
 	var data []byte
 	r := Router{Routes: []Route{
-		{"FOO.>", HandlerCounterFunc(&fooCounter, t, "FOO.>")},
+		{">", HandlerCounterFunc(&fooCounter, t, "FOO.>")},
+		{"FOO.>", HandlerCounterFunc(&fooBarCounter, t, "FOO.BAR")},
 		{"FOO.BAR", HandlerCounterFunc(&fooBarCounter, t, "FOO.BAR")},
 		{"FOO.BAR.*", HandlerCounterFunc(&fooBarStarCounter, t, "FOO.BAR.*")},
 	}}
+	t.Logf("%+v", r)
 
 	RunServer(func(nc *nats.Conn) {
 		go r.ListenAndHandle(ctx, nc)

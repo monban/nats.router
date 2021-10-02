@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/nats-io/nats.go"
 )
@@ -17,6 +18,7 @@ type Route struct {
 func (r *Route) Start(ctx context.Context, nc *nats.Conn) {
 	ch := make(chan *nats.Msg, 100)
 	nc.ChanSubscribe(r.Subject, ch)
+	fmt.Printf("Listening on %v...\n", r.Subject)
 	go func() {
 		for {
 			select {
