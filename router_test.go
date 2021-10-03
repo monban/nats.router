@@ -67,18 +67,18 @@ func TestMultipleRoutes(t *testing.T) {
 }
 
 func TestHierarchicalRoutes(t *testing.T) {
-	ctx, done := context.WithTimeout(context.Background(), 5*time.Second)
-	var fooCounter int32
+	ctx, done := context.WithTimeout(context.Background(), 1*time.Second)
+	var catchAllCounter int32
+	var fooSubCounter int32
 	var fooBarCounter int32
 	var fooBarStarCounter int32
 	var data []byte
-	r := Router{Routes: []Route{
-		{">", HandlerCounterFunc(&fooCounter, t, "FOO.>")},
-		{"FOO.>", HandlerCounterFunc(&fooBarCounter, t, "FOO.BAR")},
-		{"FOO.BAR", HandlerCounterFunc(&fooBarCounter, t, "FOO.BAR")},
-		{"FOO.BAR.*", HandlerCounterFunc(&fooBarStarCounter, t, "FOO.BAR.*")},
-	}}
-	t.Logf("%+v", r)
+	r := Router{[]Route{
+		{">", HandlerCounterFunc(&catchAllCounter, t, ">")},
+		{"FOO.>", HandlerCounterFunc(&fooSubCounter, t, ">")},
+		{"FOO.BAR", HandlerCounterFunc(&fooBarCounter, t, ">")},
+		{"FOO.BAR.*", HandlerCounterFunc(&fooBarStarCounter, t, ">")},
+	}, false}
 
 	RunServer(func(nc *nats.Conn) {
 		go r.ListenAndHandle(ctx, nc)
@@ -87,11 +87,14 @@ func TestHierarchicalRoutes(t *testing.T) {
 		nc.Publish("FOO.BAR", data)
 		nc.Publish("FOO.BAR.BAZ", data)
 		nc.Publish("FOO.QUX", data)
-		for !(fooCounter == 3 && fooBarCounter == 1 && fooBarStarCounter == 1) {
+		for !(catchAllCounter == 4 && fooSubCounter == 3 && fooBarCounter == 1 && fooBarStarCounter == 1) {
 			select {
 			case <-ctx.Done():
-				t.Errorf("fooCounter: %v, fooBarCounter: %v, fooBarStarCounter: %v", fooCounter, fooBarCounter, fooBarStarCounter)
 				t.Error(ctx.Err())
+				t.Errorf("catchAllCounter: %v", catchAllCounter)
+				t.Errorf("fooSubCounter: %v", fooSubCounter)
+				t.Errorf("fooBarCounter: %v", fooBarCounter)
+				t.Errorf("fooBarStarCounter: %v", fooBarStarCounter)
 				return
 			default:
 				runtime.Gosched()

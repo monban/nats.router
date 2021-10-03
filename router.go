@@ -15,7 +15,7 @@ type Router struct {
 func (r *Router) ListenAndHandle(ctx context.Context, nc *nats.Conn) {
 	r.ready = false
 	for _, route := range r.Routes {
-		route.Start(ctx, nc)
+		route.Start(ctx, nc, 10)
 	}
 	r.ready = true
 	<-ctx.Done()

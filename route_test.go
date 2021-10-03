@@ -18,7 +18,7 @@ func TestRoute(t *testing.T) {
 		called <- true
 	}}
 	RunServer(func(nc *nats.Conn) {
-		route.Start(ctx, nc)
+		route.Start(ctx, nc, 10)
 		nc.Publish(subject, data)
 		select {
 		case <-called:

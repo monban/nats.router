@@ -2,7 +2,6 @@ package router
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/nats-io/nats.go"
 )
@@ -15,15 +14,18 @@ type Route struct {
 }
 
 // Start a goroutine that will call Handler whenever a matching Subject arrives
-func (r *Route) Start(ctx context.Context, nc *nats.Conn) {
-	ch := make(chan *nats.Msg, 100)
+func (r *Route) Start(ctx context.Context, nc *nats.Conn, buffsize uint) {
+	ch := make(chan *nats.Msg, buffsize)
 	nc.ChanSubscribe(r.Subject, ch)
-	fmt.Printf("Listening on %v...\n", r.Subject)
-	go func() {
+	go ListenAndHandle(ctx, ch, r.Handler)
+}
+
+func ListenAndHandle(ctx context.Context, ch chan *nats.Msg, fn HandlerFunc) {
+	func() {
 		for {
 			select {
 			case msg := <-ch:
-				go r.Handler(ctx, msg)
+				go fn(ctx, msg)
 			case <-ctx.Done():
 				return
 			}

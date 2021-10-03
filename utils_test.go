@@ -21,9 +21,7 @@ func RunServer(fn func(*nats.Conn)) {
 }
 
 func HandlerCounterFunc(i *int32, t *testing.T, name string) HandlerFunc {
-	t.Logf("Creating %v handler", name)
 	return func(ctx context.Context, msg *nats.Msg) {
-		t.Logf("%v handling subject %v", name, msg.Subject)
 		atomic.AddInt32(i, 1)
 		msg.Respond([]byte(""))
 	}
