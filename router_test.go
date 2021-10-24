@@ -17,12 +17,9 @@ func TestSingleRoute(t *testing.T) {
 	fooHandler := func(ctx context.Context, msg *nats.Msg) {
 		called <- true
 	}
-	r := &Router{Routes: []Route{
-		{subject, fooHandler},
-	}}
 	RunServer(func(nc *nats.Conn) {
-		go r.ListenAndHandle(ctx, nc)
-		r.WaitUntilReady()
+		r := New(ctx, nc, 0)
+		r.Route(subject, fooHandler)
 		nc.Publish(subject, data)
 		select {
 		case <-called:
@@ -40,15 +37,13 @@ func TestMultipleRoutes(t *testing.T) {
 	var data []byte
 	var expected_count int32 = 4
 	h := HandlerCounterFunc(&counter, t, "Handler")
-	r := Router{Routes: []Route{
-		{"FOO", h},
-		{"BAR", h},
-		{"BAZ", h},
-	}}
 
 	RunServer(func(nc *nats.Conn) {
-		go r.ListenAndHandle(ctx, nc)
-		r.WaitUntilReady()
+		r := New(ctx, nc, 4)
+		r.Route("FOO", h)
+		r.Route("BAR", h)
+		r.Route("BAZ", h)
+
 		nc.Publish("BAZ", data)
 		nc.Publish("BAR", data)
 		nc.Publish("BAR", data)
@@ -73,16 +68,13 @@ func TestHierarchicalRoutes(t *testing.T) {
 	var fooBarCounter int32
 	var fooBarStarCounter int32
 	var data []byte
-	r := Router{[]Route{
-		{">", HandlerCounterFunc(&catchAllCounter, t, ">")},
-		{"FOO.>", HandlerCounterFunc(&fooSubCounter, t, ">")},
-		{"FOO.BAR", HandlerCounterFunc(&fooBarCounter, t, ">")},
-		{"FOO.BAR.*", HandlerCounterFunc(&fooBarStarCounter, t, ">")},
-	}, false}
 
 	RunServer(func(nc *nats.Conn) {
-		go r.ListenAndHandle(ctx, nc)
-		r.WaitUntilReady()
+		r := New(ctx, nc, 4)
+		r.Route(">", HandlerCounterFunc(&catchAllCounter, t, ">"))
+		r.Route("FOO.>", HandlerCounterFunc(&fooSubCounter, t, ">"))
+		r.Route("FOO.BAR", HandlerCounterFunc(&fooBarCounter, t, ">"))
+		r.Route("FOO.BAR.*", HandlerCounterFunc(&fooBarStarCounter, t, ">"))
 		nc.Publish("FOO", data)
 		nc.Publish("FOO.BAR", data)
 		nc.Publish("FOO.BAR.BAZ", data)

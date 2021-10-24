@@ -2,28 +2,27 @@ package router
 
 import (
 	"context"
-	"runtime"
 
 	"github.com/nats-io/nats.go"
 )
 
 type Router struct {
-	Routes []Route
-	ready  bool
+	routes []route
+	nc     *nats.Conn
+	ctx    context.Context
+	buffsz uint
 }
 
-func (r *Router) ListenAndHandle(ctx context.Context, nc *nats.Conn) {
-	r.ready = false
-	for _, route := range r.Routes {
-		route.Start(ctx, nc, 10)
-	}
-	r.ready = true
-	<-ctx.Done()
+func New(ctx context.Context, nc *nats.Conn, buffersize uint) Router {
+	return Router{nc: nc, buffsz: buffersize}
 }
 
-// Blocks until the router has loaded all routes
-func (r *Router) WaitUntilReady() {
-	for !r.ready {
-		runtime.Gosched()
+// Add a new route to the routing table and start listening on it
+func (r *Router) Route(subject string, handler HandlerFunc) {
+	route := route{
+		subject: subject,
+		handler: handler,
 	}
+	r.routes = append(r.routes, route)
+	route.start(r.ctx, r.nc, r.buffsz)
 }

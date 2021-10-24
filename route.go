@@ -8,26 +8,29 @@ import (
 
 type HandlerFunc func(context.Context, *nats.Msg)
 
-type Route struct {
-	Subject string
-	Handler HandlerFunc
+type route struct {
+	subject string
+	handler HandlerFunc
+	ctx     context.Context
 }
 
 // Start a goroutine that will call Handler whenever a matching Subject arrives
-func (r *Route) Start(ctx context.Context, nc *nats.Conn, buffsize uint) {
+func (r *route) start(ctx context.Context, nc *nats.Conn, buffsize uint) {
 	ch := make(chan *nats.Msg, buffsize)
-	nc.ChanSubscribe(r.Subject, ch)
-	go ListenAndHandle(ctx, ch, r.Handler)
+	nc.ChanSubscribe(r.subject, ch)
+	go listenAndHandle(ctx, ch, r.handler)
 }
 
-func ListenAndHandle(ctx context.Context, ch chan *nats.Msg, fn HandlerFunc) {
+func listenAndHandle(ctx context.Context, ch chan *nats.Msg, fn HandlerFunc) {
 	func() {
 		for {
 			select {
 			case msg := <-ch:
 				go fn(ctx, msg)
-			case <-ctx.Done():
-				return
+				// TODO method of removing routes
+				// TODO below code causes SIGSEGV
+				//case <-ctx.Done():
+				//return
 			}
 		}
 	}()

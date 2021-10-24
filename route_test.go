@@ -13,12 +13,12 @@ func TestRoute(t *testing.T) {
 	subject := "FOO"
 	data := []byte("bar")
 	called := make(chan bool, 10)
-	route := Route{Subject: subject, Handler: func(ctx context.Context, msg *nats.Msg) {
+	route := route{subject: subject, handler: func(ctx context.Context, msg *nats.Msg) {
 		t.Logf("Received message with subject %v data %v", msg.Subject, string(msg.Data))
 		called <- true
 	}}
 	RunServer(func(nc *nats.Conn) {
-		route.Start(ctx, nc, 10)
+		route.start(ctx, nc, 10)
 		nc.Publish(subject, data)
 		select {
 		case <-called:
